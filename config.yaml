@@ -1,0 +1,111 @@
+# ==============================================================================
+# config.yaml — Universal Survival Engine: Global Configuration Matrix
+# ==============================================================================
+project:
+  name: universal-survival-engine
+  author: Bjoernar KK
+  version: "3.3"
+
+# ── Multi-cohort definitions (consumed by all NBs via cohorts loop) ───────────
+cohorts:
+  - name: TCGA-LGG
+    short: lgg
+    label: Brain LGG
+    expression_file: TCGA-LGG.star_fpkm.tsv
+    survival_file:   TCGA-LGG.survival.tsv
+
+  - name: TCGA-KIRC
+    short: kirc
+    label: Kidney KIRC
+    expression_file: TCGA-KIRC.star_fpkm.tsv
+    survival_file:   TCGA-KIRC.survival.tsv
+
+  - name: TCGA-LUAD
+    short: luad
+    label: Lung LUAD
+    expression_file: TCGA-LUAD.star_fpkm.tsv
+    survival_file:   TCGA-LUAD.survival.tsv
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+
+preprocessing:
+  variance_filter_top_n: 3000      # top HVGs retained per cohort
+  test_size: 0.20                  # 20 % held-out test set
+  val_size_of_temp: 0.25           # 25 % of remaining -> 20 % overall val
+
+# ── Shared model hyperparameters (NB00 MLP / NB01 / NB02 DAE) ────────────────
+model:
+  latent_dim: 64
+  num_intervals: 10
+  encoder_hidden: [512, 256]
+  decoder_hidden:  [256, 512]
+  dropout_rate: 0.40
+
+# ── Shared training hyperparameters ──────────────────────────────────────────
+training:
+  seed: 42
+  epochs: 40                       # Phase 1 DAE pretraining epochs
+  cox_epochs: 80                   # Phase 2 joint / Cox fine-tune epochs
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.01
+  noise_factor: 0.25
+  patience: 8
+  cox_loss_weight: 1.0
+  structural_loss_weight: 0.5
+  cosine_loss_weight: 0.5
+
+# ── NB03 tabular benchmark settings ──────────────────────────────────────────
+nb03:
+  nb00_version: "3_3_ram"          # matches NB00 NB_VERSION dots->underscores
+  lr_optA: 0.00005
+  wd_optA: 0.04
+  hidden_A: [512, 128, 64]
+  dropout_A: [0.4, 0.3, 0.0]
+  lr_optB: 0.0001
+  wd_optB: 0.02
+  hidden_B: [256, 64]
+  dropout_B: [0.5, 0.0]
+  patience: 12
+  km_milestones_years: [1, 3, 5]
+
+# ── NB04 GCN-pathway settings ─────────────────────────────────────────────────
+stage4_gcn:
+  latent_dim: 64
+  num_intervals: 10
+  gcn_hidden_channels: [128, 64]
+  dropout_rate: 0.4
+  pathways:
+    - "HALLMARK_APOPTOSIS"
+    - "HALLMARK_CELL_CYCLE"
+    - "HALLMARK_ANGIOGENESIS"
+    - "HALLMARK_DNA_REPAIR"
+  structural_loss_weight: 1.2
+  discrete_hazard_weight: 1.0
+  cosine_loss_weight: 0.5
+
+# ── NB05 DAE vs GCN+DAE ablation settings ────────────────────────────────────
+# NB05 is auxiliary (runs independently of NB00-NB04).
+# These settings override global training.* where specified.
+nb05:
+  # Architecture (both DAE and GraphFusionDAE use matched hidden_dim)
+  latent_dim: 64                   # overrides model.latent_dim for NB05
+  hidden_dim: 32                   # encoder/decoder hidden width (matched param count)
+  k_nn: 15                         # k-NN graph degree for patient-similarity adj matrix
+
+  # Training
+  epochs: 40                       # overrides training.epochs for NB05
+  lr: 0.0005                       # overrides training.lr for NB05
+  noise_factor: 0.25               # overrides training.noise_factor for NB05
+
+# ── Canonical output layout (all notebooks follow this) ──────────────────────
+# checkpoints/<STAGE>/     e.g. checkpoints/NB03/
+# embeddings/<STAGE>/      e.g. embeddings/NB05/
+# results/<STAGE>/figures/ e.g. results/NB05/figures/
+output:
+  checkpoint_dir: checkpoints
+  embeddings_dir: embeddings
+  results_dir: results
+  figures_subdir: figures
