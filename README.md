@@ -82,7 +82,7 @@ training:
 If you use this code or build on this work, please cite:
 
 ```
-[Author Name]. Graph-Fused Multi-Omic Autoencoders for Assumption-Free
+Ko KK. Graph-Fused Multi-Omic Autoencoders for Assumption-Free
 Cancer Survival Prediction with Pathway-Level Interpretability.
 Briefings in Bioinformatics, [year]. [DOI to be added upon publication]
 ```
